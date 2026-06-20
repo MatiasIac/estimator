@@ -120,6 +120,39 @@
 
   var RISK_STATUSES = ["open", "monitoring", "mitigated", "closed"];
 
+  var DEFAULT_SCENARIOS = [
+    {
+      id: "scenario-current",
+      name: "Current plan",
+      enabled: true,
+      capacity: 3,
+      effortAdjustment: 0,
+      riskAdjustment: 0,
+      projectDelay: 0,
+      notes: "Baseline assumptions from the current controls."
+    },
+    {
+      id: "scenario-staffing",
+      name: "Optimistic staffing",
+      enabled: true,
+      capacity: 5,
+      effortAdjustment: 0,
+      riskAdjustment: -15,
+      projectDelay: 0,
+      notes: "More parallel work streams and reduced risk impact."
+    },
+    {
+      id: "scenario-conservative",
+      name: "Conservative buffer",
+      enabled: true,
+      capacity: 3,
+      effortAdjustment: 10,
+      riskAdjustment: 25,
+      projectDelay: 2,
+      notes: "Added scope pressure, larger risk impact, and schedule delay."
+    }
+  ];
+
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -231,6 +264,20 @@
     };
   }
 
+  function makeScenario(raw, index, fallbackCapacity) {
+    var source = raw || {};
+    return {
+      id: normalizeId(source.id || "scenario-" + String(index + 1).padStart(2, "0")),
+      name: String(source.name || "New scenario").trim(),
+      enabled: source.enabled !== false,
+      capacity: Math.max(1, Math.round(toNumber(source.capacity, fallbackCapacity || 1))),
+      effortAdjustment: clamp(toNumber(source.effortAdjustment, 0), -90, 500),
+      riskAdjustment: clamp(toNumber(source.riskAdjustment, 0), -100, 500),
+      projectDelay: Math.max(0, toNumber(source.projectDelay, 0)),
+      notes: String(source.notes || "").trim()
+    };
+  }
+
   function isRiskActive(risk) {
     return normalizeRiskStatus(risk.status) !== "closed";
   }
@@ -276,6 +323,73 @@
     return errors;
   }
 
+  function validateScenarios(scenarios) {
+    var errors = [];
+    var ids = new Set();
+
+    (scenarios || []).forEach(function validateScenario(scenario, index) {
+      var label = scenario.id || "scenario row " + (index + 1);
+      if (!scenario.id) {
+        errors.push("Scenario row " + (index + 1) + " is missing an ID.");
+      }
+      if (ids.has(scenario.id)) {
+        errors.push("Duplicate scenario ID: " + scenario.id + ".");
+      }
+      ids.add(scenario.id);
+
+      if (!scenario.name) {
+        errors.push(label + " is missing a name.");
+      }
+      if (!Number.isFinite(Number(scenario.capacity)) || scenario.capacity < 1) {
+        errors.push(label + " work streams must be at least 1.");
+      }
+      if (!Number.isFinite(Number(scenario.effortAdjustment)) || scenario.effortAdjustment < -90) {
+        errors.push(label + " effort adjustment cannot be less than -90%.");
+      }
+      if (!Number.isFinite(Number(scenario.riskAdjustment)) || scenario.riskAdjustment < -100) {
+        errors.push(label + " risk adjustment cannot be less than -100%.");
+      }
+      if (!Number.isFinite(Number(scenario.projectDelay)) || scenario.projectDelay < 0) {
+        errors.push(label + " project delay must be zero or greater.");
+      }
+    });
+
+    return errors;
+  }
+
+  function applyScenarioToStories(stories, scenario) {
+    var settings = makeScenario(scenario, 0, 1);
+    var multiplier = Math.max(0, 1 + settings.effortAdjustment / 100);
+    return (stories || []).map(function adjustStory(story, index) {
+      return makeStory({
+        id: story.id,
+        name: story.name,
+        o: round(story.o * multiplier, 4),
+        m: round(story.m * multiplier, 4),
+        p: round(story.p * multiplier, 4),
+        dependencies: story.dependencies || []
+      }, index);
+    });
+  }
+
+  function applyScenarioToRisks(risks, scenario) {
+    var settings = makeScenario(scenario, 0, 1);
+    var multiplier = Math.max(0, 1 + settings.riskAdjustment / 100);
+    return (risks || []).map(function adjustRisk(risk, index) {
+      return makeRisk({
+        id: risk.id,
+        description: risk.description,
+        target: risk.target,
+        probability: risk.probability,
+        impact: round(risk.impact * multiplier, 4),
+        owner: risk.owner,
+        mitigation: risk.mitigation,
+        contingency: risk.contingency,
+        status: risk.status
+      }, index);
+    });
+  }
+
   function downloadFile(filename, content, mimeType) {
     var blob = new Blob([content], { type: mimeType || "text/plain;charset=utf-8" });
     var url = URL.createObjectURL(blob);
@@ -302,6 +416,7 @@
   Estimator.Core = {
     DEFAULT_STORIES: DEFAULT_STORIES,
     DEFAULT_RISKS: DEFAULT_RISKS,
+    DEFAULT_SCENARIOS: DEFAULT_SCENARIOS,
     RISK_STATUSES: RISK_STATUSES,
     clone: clone,
     toNumber: toNumber,
@@ -315,10 +430,14 @@
     normalizeId: normalizeId,
     makeStory: makeStory,
     makeRisk: makeRisk,
+    makeScenario: makeScenario,
     normalizeRiskStatus: normalizeRiskStatus,
     isRiskActive: isRiskActive,
     riskExposure: riskExposure,
     validateRisks: validateRisks,
+    validateScenarios: validateScenarios,
+    applyScenarioToStories: applyScenarioToStories,
+    applyScenarioToRisks: applyScenarioToRisks,
     downloadFile: downloadFile,
     uniqueId: uniqueId
   };

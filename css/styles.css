@@ -439,6 +439,14 @@ h2 {
   min-width: 1540px;
 }
 
+.scenario-table {
+  min-width: 1180px;
+}
+
+.comparison-table {
+  min-width: 980px;
+}
+
 .story-table th,
 .story-table td {
   border-bottom: 1px solid var(--line);
@@ -492,6 +500,66 @@ h2 {
 
 .risk-table td:nth-child(6) {
   width: 150px;
+}
+
+.scenario-table td:nth-child(1) {
+  width: 72px;
+  text-align: center;
+}
+
+.scenario-table td:nth-child(2) {
+  width: 160px;
+}
+
+.scenario-table td:nth-child(3),
+.scenario-table td:nth-child(8) {
+  width: 250px;
+}
+
+.scenario-table td:nth-child(4),
+.scenario-table td:nth-child(5),
+.scenario-table td:nth-child(6),
+.scenario-table td:nth-child(7) {
+  width: 124px;
+}
+
+.scenario-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+.comparison-block {
+  border-top: 1px solid var(--line);
+}
+
+.comparison-heading {
+  padding: 16px 18px 10px;
+  background: #ffffff;
+}
+
+.comparison-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.comparison-table td:nth-child(1) {
+  width: 210px;
+  font-weight: 800;
+}
+
+.comparison-table td:nth-child(2),
+.comparison-table td:nth-child(3),
+.comparison-table td:nth-child(4),
+.comparison-table td:nth-child(5),
+.comparison-table td:nth-child(6),
+.comparison-table td:nth-child(7) {
+  width: 120px;
+}
+
+.comparison-table td:nth-child(8) {
+  color: var(--muted);
 }
 
 .story-table .pert-cell {

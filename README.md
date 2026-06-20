@@ -26,7 +26,7 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
 - Shows which stories have the greatest sensitivity to project duration.
 - Tracks project and story-level risks that can optionally affect the simulation.
 - Lets users compare Beta-PERT and triangular estimation distributions.
-- Supports quick scenario analysis by changing estimates, dependencies, simulation count, risks, and parallel work streams.
+- Supports scenario planning by comparing staffing, scope, delay, and risk assumptions side by side.
 - Gives executives and project managers visual feedback without needing a spreadsheet model.
 - Keeps all data local in the browser unless the user exports it.
 
@@ -36,6 +36,8 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
 - Editable story table after upload.
 - Risk register with probability, impact, owner, mitigation, contingency, and status.
 - Optional risk-adjusted simulation impact.
+- Scenario planning table with enabled scenarios, work streams, effort adjustment, risk adjustment, project delay, and notes.
+- Scenario comparison table for P50, P80, P95, expected effort, and risk exposure.
 - Monte Carlo simulation with configurable simulation count.
 - Beta-PERT and triangular distribution options.
 - Configurable parallel work streams to model team capacity.
@@ -58,21 +60,23 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
 3. Review the parsed story data in the editable table.
 4. Adjust estimates, dependencies, or story names if needed.
 5. Add or update risks in the risk register if the project has known uncertainty beyond normal story estimates.
-6. Choose the simulation settings:
+6. Add or update scenarios if you want to compare alternate planning assumptions.
+7. Choose the simulation settings:
    - number of simulations
    - distribution type
    - parallel work streams
    - PERT lambda
    - whether risk impacts should be included
-7. Run the simulation.
-8. Review the dashboard:
+8. Run the simulation.
+9. Review the dashboard:
    - confidence values
    - project duration distribution
    - critical path
    - sensitivity drivers
    - effort versus duration
    - risk exposure
-9. Export the updated CSV or JSON results when needed.
+   - scenario comparison
+10. Export the updated CSV or JSON results when needed.
 
 ## CSV Format
 
@@ -125,6 +129,20 @@ The risk register captures uncertainty that is different from normal estimate va
 Each risk can be linked to the whole project or to a specific story. Story-linked risks add impact to that story when they trigger during a simulation run. Project-level risks add schedule impact after the dependency schedule is calculated. Closed risks remain visible for tracking, but they are not included in simulated impact.
 
 Use the `Include risk impacts` setting to compare the normal forecast with the risk-adjusted forecast.
+
+### Scenario Planning
+
+Scenario planning lets you compare alternate versions of the plan without permanently changing the story estimates or risk register. Each scenario starts from the current project data and applies a small set of assumptions before running its own Monte Carlo simulation.
+
+Each scenario can define:
+
+- `Work streams`: how many stories can be worked on in parallel for that scenario.
+- `Effort adjustment %`: a percentage applied to all story estimates. This can model added scope, reduced scope, productivity changes, or a more conservative estimate posture.
+- `Risk adjustment %`: a percentage applied to active risk impacts. This can model stronger mitigation, weaker mitigation, or a conservative risk buffer.
+- `Project delay`: a fixed schedule delay added to every simulation run. This can model a delayed dependency, access wait time, approval delay, or release window constraint.
+- `Notes`: a short explanation of the assumption behind the scenario.
+
+After a simulation run, enabled scenarios appear in the scenario comparison table. This makes it easier to support executive conversations such as, "What happens if we add another team?", "What happens if scope grows by 10%?", or "What happens if this external dependency is delayed?"
 
 ## Running Tests
 

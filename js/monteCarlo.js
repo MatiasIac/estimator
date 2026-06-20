@@ -113,6 +113,7 @@
     var distribution = settings.distribution === "triangular" ? "triangular" : "betaPert";
     var capacity = Math.max(1, Math.round(Core.toNumber(settings.capacity, 1)));
     var lambda = Core.clamp(Core.toNumber(settings.lambda, 4), 1, 10);
+    var projectDelay = Math.max(0, Core.toNumber(settings.projectDelay, 0));
     var includeRiskImpacts = settings.includeRiskImpacts === true;
     var risks = (settings.risks || []).map(function normalizeRisk(risk, index) {
       return Core.makeRisk(risk, index);
@@ -196,7 +197,7 @@
       });
 
       var scheduled = Metrics.scheduleWithCapacity(stories, durationById, capacity);
-      var projectDuration = scheduled.duration + projectRiskImpact;
+      var projectDuration = scheduled.duration + projectRiskImpact + projectDelay;
 
       durations.push(projectDuration);
       efforts.push(effort);
@@ -272,6 +273,7 @@
         distribution: distribution,
         capacity: capacity,
         lambda: lambda,
+        projectDelay: projectDelay,
         includeRiskImpacts: includeRiskImpacts
       },
       deterministic: Metrics.summarizeDeterministic(stories, capacity),
@@ -296,10 +298,62 @@
     };
   }
 
+  function simulateScenario(stories, options, scenario) {
+    var baseOptions = options || {};
+    var settings = Core.makeScenario(scenario, 0, baseOptions.capacity || 1);
+    var scenarioStories = Core.applyScenarioToStories(stories, settings);
+    var scenarioRisks = Core.applyScenarioToRisks(baseOptions.risks || [], settings);
+    var scenarioOptions = {
+      iterations: baseOptions.iterations,
+      distribution: baseOptions.distribution,
+      capacity: settings.capacity,
+      lambda: baseOptions.lambda,
+      includeRiskImpacts: baseOptions.includeRiskImpacts,
+      risks: scenarioRisks,
+      projectDelay: settings.projectDelay
+    };
+    var result = simulate(scenarioStories, scenarioOptions);
+
+    return {
+      scenario: settings,
+      result: result,
+      summary: {
+        id: settings.id,
+        name: settings.name,
+        capacity: settings.capacity,
+        effortAdjustment: settings.effortAdjustment,
+        riskAdjustment: settings.riskAdjustment,
+        projectDelay: settings.projectDelay,
+        p50: result.duration.p50,
+        p80: result.duration.p80,
+        p90: result.duration.p90,
+        p95: result.duration.p95,
+        effort: result.effort.mean,
+        riskExposure: result.risk.expectedExposure,
+        notes: settings.notes
+      }
+    };
+  }
+
+  function compareScenarios(stories, options, scenarios) {
+    return (scenarios || [])
+      .map(function normalizeScenario(scenario, index) {
+        return Core.makeScenario(scenario, index, options && options.capacity);
+      })
+      .filter(function enabledScenario(scenario) {
+        return scenario.enabled;
+      })
+      .map(function runScenario(scenario) {
+        return simulateScenario(stories, options, scenario);
+      });
+  }
+
   Estimator.MonteCarlo = {
     sampleTriangular: sampleTriangular,
     sampleBetaPert: sampleBetaPert,
     simulate: simulate,
+    simulateScenario: simulateScenario,
+    compareScenarios: compareScenarios,
     summarize: summarize
   };
 

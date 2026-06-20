@@ -157,6 +157,69 @@
       <section class="data-panel">
         <div class="panel-heading">
           <div>
+            <h2>Scenario planning</h2>
+            <p>Compare alternate staffing, scope, delay, and risk assumptions without changing the base estimate.</p>
+          </div>
+          <div class="inline-actions">
+            <button class="button secondary" id="addScenarioButton" type="button">Add scenario</button>
+          </div>
+        </div>
+        <div class="validation-list" id="scenarioValidationList" role="status" aria-live="polite"></div>
+        <div class="table-wrap">
+          <table class="story-table scenario-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>ID</th>
+                <th>Scenario</th>
+                <th>Work streams</th>
+                <th>Effort adj. %</th>
+                <th>Risk adj. %</th>
+                <th>Project delay</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="scenarioTableBody">
+              <tr class="empty-row">
+                <td colspan="9">Add scenarios to compare alternate planning assumptions.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="comparison-block">
+          <div class="comparison-heading">
+            <h2>Scenario comparison</h2>
+            <p>Scenario results use the current simulation count and distribution settings.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="story-table comparison-table">
+              <thead>
+                <tr>
+                  <th>Scenario</th>
+                  <th>Work streams</th>
+                  <th>P50</th>
+                  <th>P80</th>
+                  <th>P95</th>
+                  <th>Expected effort</th>
+                  <th>Risk exposure</th>
+                  <th>Assumptions</th>
+                </tr>
+              </thead>
+              <tbody id="scenarioComparisonBody">
+                <tr class="empty-row">
+                  <td colspan="8">Run a simulation to compare enabled scenarios.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="data-panel">
+        <div class="panel-heading">
+          <div>
             <h2>Editable story data</h2>
             <p>Update estimates, dependencies, or story names and run the model again.</p>
           </div>

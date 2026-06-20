@@ -16,7 +16,10 @@
   var state = {
     stories: [],
     risks: [],
+    scenarios: [],
     results: null,
+    scenarioResults: [],
+    scenarioNotice: "",
     document: null,
     refs: {}
   };
@@ -38,8 +41,12 @@
       validationList: documentRef.getElementById("validationList"),
       riskTableBody: documentRef.getElementById("riskTableBody"),
       riskValidationList: documentRef.getElementById("riskValidationList"),
+      scenarioTableBody: documentRef.getElementById("scenarioTableBody"),
+      scenarioComparisonBody: documentRef.getElementById("scenarioComparisonBody"),
+      scenarioValidationList: documentRef.getElementById("scenarioValidationList"),
       addStoryButton: documentRef.getElementById("addStoryButton"),
       addRiskButton: documentRef.getElementById("addRiskButton"),
+      addScenarioButton: documentRef.getElementById("addScenarioButton"),
       exportCsvButton: documentRef.getElementById("exportCsvButton"),
       exportResultsButton: documentRef.getElementById("exportResultsButton"),
       runMeta: documentRef.getElementById("runMeta"),
@@ -75,7 +82,12 @@
     });
 
     refs.loadSampleButton.addEventListener("click", function loadSample() {
-      setStories(Core.clone(Core.DEFAULT_STORIES), true, Core.clone(Core.DEFAULT_RISKS));
+      setStories(
+        Core.clone(Core.DEFAULT_STORIES),
+        true,
+        Core.clone(Core.DEFAULT_RISKS),
+        Core.clone(Core.DEFAULT_SCENARIOS)
+      );
     });
 
     refs.simulationForm.addEventListener("submit", function submitSimulation(event) {
@@ -85,6 +97,7 @@
 
     refs.addStoryButton.addEventListener("click", addStory);
     refs.addRiskButton.addEventListener("click", addRisk);
+    refs.addScenarioButton.addEventListener("click", addScenario);
     refs.exportCsvButton.addEventListener("click", exportCsv);
     refs.exportResultsButton.addEventListener("click", exportResults);
 
@@ -92,6 +105,8 @@
     refs.tableBody.addEventListener("click", handleTableClick);
     refs.riskTableBody.addEventListener("change", handleRiskTableChange);
     refs.riskTableBody.addEventListener("click", handleRiskTableClick);
+    refs.scenarioTableBody.addEventListener("change", handleScenarioTableChange);
+    refs.scenarioTableBody.addEventListener("click", handleScenarioTableClick);
 
     ["dragenter", "dragover"].forEach(function bindDrag(eventName) {
       refs.dropZone.addEventListener(eventName, function onDrag(event) {
@@ -140,14 +155,22 @@
     };
   }
 
-  function setStories(stories, shouldRun, risks) {
+  function setStories(stories, shouldRun, risks, scenarios) {
     state.stories = stories.map(function normalizeStory(story, index) {
       return Core.makeStory(story, index);
     });
     state.risks = Array.isArray(risks)
       ? risks.map(function normalizeRisk(risk, index) { return Core.makeRisk(risk, index); })
       : [];
+    state.scenarios = Array.isArray(scenarios)
+      ? scenarios.map(function normalizeScenario(scenario, index) {
+        return Core.makeScenario(scenario, index, readOptions().capacity);
+      })
+      : Core.clone(Core.DEFAULT_SCENARIOS).map(function normalizeScenario(scenario, index) {
+        return Core.makeScenario(scenario, index, readOptions().capacity);
+      });
     state.results = null;
+    state.scenarioResults = [];
     render();
     if (shouldRun) {
       runSimulation();
@@ -167,7 +190,10 @@
       }, state.stories.length)
     );
     state.results = null;
+    state.scenarioResults = [];
+    state.scenarioNotice = "Scenario added. Edit the assumptions, then run the simulation to compare it.";
     render();
+    focusScenarioRow(state.scenarios.length - 1);
   }
 
   function addRisk() {
@@ -186,6 +212,26 @@
       }, state.risks.length)
     );
     state.results = null;
+    state.scenarioResults = [];
+    render();
+  }
+
+  function addScenario() {
+    var existingIds = new Set(state.scenarios.map(function getId(scenario) { return scenario.id; }));
+    state.scenarios.push(
+      Core.makeScenario({
+        id: Core.uniqueId(existingIds, "scenario"),
+        name: "New scenario",
+        enabled: true,
+        capacity: readOptions().capacity,
+        effortAdjustment: 0,
+        riskAdjustment: 0,
+        projectDelay: 0,
+        notes: ""
+      }, state.scenarios.length, readOptions().capacity)
+    );
+    state.results = null;
+    state.scenarioResults = [];
     render();
   }
 
@@ -205,6 +251,7 @@
       });
     }
     state.results = null;
+    state.scenarioResults = [];
     render();
   }
 
@@ -216,6 +263,20 @@
     var index = Number(button.dataset.index);
     state.risks.splice(index, 1);
     state.results = null;
+    state.scenarioResults = [];
+    render();
+  }
+
+  function handleScenarioTableClick(event) {
+    var button = event.target.closest("button[data-action='delete-scenario']");
+    if (!button) {
+      return;
+    }
+    var index = Number(button.dataset.index);
+    state.scenarios.splice(index, 1);
+    state.results = null;
+    state.scenarioResults = [];
+    state.scenarioNotice = "Scenario removed. Run the simulation again to refresh the comparison.";
     render();
   }
 
@@ -250,6 +311,8 @@
 
     story.estimation = Core.round(Core.pertMean(story.o, story.m, story.p), 2);
     state.results = null;
+    state.scenarioResults = [];
+    state.scenarioNotice = "Scenario changed. Run the simulation again to refresh the comparison.";
     render();
   }
 
@@ -287,16 +350,56 @@
     }
 
     state.results = null;
+    state.scenarioResults = [];
+    render();
+  }
+
+  function handleScenarioTableChange(event) {
+    var input = event.target;
+    if (!input.dataset || input.dataset.index === undefined) {
+      return;
+    }
+
+    var index = Number(input.dataset.index);
+    var field = input.dataset.field;
+    var scenario = state.scenarios[index];
+    if (!scenario) {
+      return;
+    }
+
+    if (field === "enabled") {
+      scenario.enabled = input.checked;
+    } else if (field === "id") {
+      scenario.id = Core.normalizeId(input.value);
+    } else if (field === "name") {
+      scenario.name = input.value.trim();
+    } else if (field === "capacity") {
+      scenario.capacity = Math.max(1, Math.round(Core.toNumber(input.value, readOptions().capacity)));
+    } else if (field === "effortAdjustment") {
+      scenario.effortAdjustment = Core.clamp(Core.toNumber(input.value, 0), -90, 500);
+    } else if (field === "riskAdjustment") {
+      scenario.riskAdjustment = Core.clamp(Core.toNumber(input.value, 0), -100, 500);
+    } else if (field === "projectDelay") {
+      scenario.projectDelay = Math.max(0, Core.toNumber(input.value, 0));
+    } else if (field === "notes") {
+      scenario.notes = input.value.trim();
+    }
+
+    state.results = null;
+    state.scenarioResults = [];
     render();
   }
 
   function runSimulation() {
     var storyErrors = Csv.validateStories(state.stories);
     var riskErrors = Core.validateRisks(state.risks, state.stories);
+    var scenarioErrors = Core.validateScenarios(state.scenarios);
     renderValidation(storyErrors);
     renderRiskValidation(riskErrors);
-    if (storyErrors.length || riskErrors.length) {
+    renderScenarioValidation(scenarioErrors);
+    if (storyErrors.length || riskErrors.length || scenarioErrors.length) {
       state.results = null;
+      state.scenarioResults = [];
       renderResults();
       return;
     }
@@ -304,10 +407,13 @@
     setBusy(true);
     window.setTimeout(function runLater() {
       try {
-        state.results = MonteCarlo.simulate(state.stories, readOptions());
+        var options = readOptions();
+        state.results = MonteCarlo.simulate(state.stories, options);
+        state.scenarioResults = MonteCarlo.compareScenarios(state.stories, options, state.scenarios);
         renderResults();
       } catch (error) {
         state.results = null;
+        state.scenarioResults = [];
         renderValidation(["Simulation failed: " + error.message]);
         renderResults();
       } finally {
@@ -324,8 +430,10 @@
   function render() {
     renderTable();
     renderRiskTable();
+    renderScenarioTable();
     renderValidation(Csv.validateStories(state.stories));
     renderRiskValidation(Core.validateRisks(state.risks, state.stories));
+    renderScenarioValidation(Core.validateScenarios(state.scenarios));
     renderResults();
     state.refs.runButton.disabled = !state.stories.length;
     state.refs.exportCsvButton.disabled = !state.stories.length;
@@ -422,6 +530,49 @@
     });
   }
 
+  function renderScenarioTable() {
+    var body = state.refs.scenarioTableBody;
+    body.innerHTML = "";
+
+    if (!state.scenarios.length) {
+      var row = state.document.createElement("tr");
+      row.className = "empty-row";
+      var cell = state.document.createElement("td");
+      cell.colSpan = 9;
+      cell.textContent = "Add scenarios to compare alternate planning assumptions.";
+      row.appendChild(cell);
+      body.appendChild(row);
+      return;
+    }
+
+    state.scenarios.forEach(function renderScenario(scenario, index) {
+      var row = state.document.createElement("tr");
+      row.appendChild(scenarioEnabledCell(scenario.enabled, index));
+      row.appendChild(scenarioInputCell(scenario.id, index, "id", "text"));
+      row.appendChild(scenarioInputCell(scenario.name, index, "name", "text"));
+      row.appendChild(scenarioInputCell(scenario.capacity, index, "capacity", "number"));
+      row.appendChild(scenarioInputCell(scenario.effortAdjustment, index, "effortAdjustment", "number"));
+      row.appendChild(scenarioInputCell(scenario.riskAdjustment, index, "riskAdjustment", "number"));
+      row.appendChild(scenarioInputCell(scenario.projectDelay, index, "projectDelay", "number"));
+      row.appendChild(scenarioInputCell(scenario.notes, index, "notes", "text"));
+
+      var actionCell = state.document.createElement("td");
+      actionCell.className = "delete-cell";
+      var deleteButton = state.document.createElement("button");
+      deleteButton.className = "icon-button";
+      deleteButton.type = "button";
+      deleteButton.dataset.action = "delete-scenario";
+      deleteButton.dataset.index = String(index);
+      deleteButton.setAttribute("aria-label", "Delete " + scenario.id);
+      deleteButton.title = "Delete scenario";
+      deleteButton.textContent = "X";
+      actionCell.appendChild(deleteButton);
+      row.appendChild(actionCell);
+
+      body.appendChild(row);
+    });
+  }
+
   function inputCell(value, index, field, type) {
     var cell = state.document.createElement("td");
     var input = state.document.createElement("input");
@@ -451,6 +602,43 @@
       input.step = field === "probability" ? "1" : "0.01";
       if (field === "probability") {
         input.max = "100";
+      }
+    }
+    cell.appendChild(input);
+    return cell;
+  }
+
+  function scenarioEnabledCell(value, index) {
+    var cell = state.document.createElement("td");
+    var input = state.document.createElement("input");
+    input.checked = value !== false;
+    input.className = "scenario-check";
+    input.dataset.index = String(index);
+    input.dataset.field = "enabled";
+    input.type = "checkbox";
+    input.setAttribute("aria-label", "run scenario row " + (index + 1));
+    cell.appendChild(input);
+    return cell;
+  }
+
+  function scenarioInputCell(value, index, field, type) {
+    var cell = state.document.createElement("td");
+    var input = state.document.createElement("input");
+    input.value = value;
+    input.dataset.index = String(index);
+    input.dataset.field = field;
+    input.type = type;
+    input.setAttribute("aria-label", field + " for scenario row " + (index + 1));
+    if (type === "number") {
+      input.step = field === "capacity" ? "1" : "0.01";
+      if (field === "capacity") {
+        input.min = "1";
+      } else if (field === "effortAdjustment") {
+        input.min = "-90";
+      } else if (field === "riskAdjustment") {
+        input.min = "-100";
+      } else {
+        input.min = "0";
       }
     }
     cell.appendChild(input);
@@ -524,6 +712,34 @@
     }
   }
 
+  function renderScenarioValidation(errors) {
+    var box = state.refs.scenarioValidationList;
+    box.className = "validation-list";
+    if (!state.scenarios.length) {
+      box.textContent = "";
+      return;
+    }
+    if (errors.length) {
+      box.classList.add("has-errors");
+      box.textContent = errors.join(" ");
+    } else {
+      box.classList.add("is-ok");
+      box.textContent = state.scenarioNotice || "Enabled scenarios will be compared after each simulation run.";
+    }
+  }
+
+  function focusScenarioRow(index) {
+    window.setTimeout(function focusLater() {
+      var input = state.refs.scenarioTableBody.querySelector(
+        "input[data-index='" + index + "'][data-field='name']"
+      );
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 0);
+  }
+
   function renderResults() {
     var results = state.results;
     var refs = state.refs;
@@ -531,6 +747,7 @@
     renderRiskKpi(results);
 
     if (!results) {
+      renderScenarioComparison();
       refs.p50Value.textContent = "-";
       refs.p80Value.textContent = "-";
       refs.p95Value.textContent = "-";
@@ -567,6 +784,7 @@
     Charts.renderScatter(refs.scatterChart, results.raw.scatter, results.duration);
     Charts.renderSensitivity(refs.sensitivityChart, results.sensitivity);
     Charts.renderDependencyGraph(refs.dependencyChart, state.stories, results.deterministic);
+    renderScenarioComparison();
   }
 
   function renderRiskKpi(results) {
@@ -598,6 +816,65 @@
     }
   }
 
+  function renderScenarioComparison() {
+    var body = state.refs.scenarioComparisonBody;
+    body.innerHTML = "";
+
+    if (!state.scenarioResults.length) {
+      var emptyRow = state.document.createElement("tr");
+      emptyRow.className = "empty-row";
+      var emptyCell = state.document.createElement("td");
+      emptyCell.colSpan = 8;
+      emptyCell.textContent = state.scenarios.length
+        ? "Run a simulation to compare enabled scenarios."
+        : "Add scenarios to compare alternate planning assumptions.";
+      emptyRow.appendChild(emptyCell);
+      body.appendChild(emptyRow);
+      return;
+    }
+
+    state.scenarioResults.forEach(function renderScenarioResult(item) {
+      var summary = item.summary;
+      var row = state.document.createElement("tr");
+      appendTextCell(row, summary.name);
+      appendTextCell(row, Core.formatNumber(summary.capacity, 0));
+      appendTextCell(row, Core.formatNumber(summary.p50, 1));
+      appendTextCell(row, Core.formatNumber(summary.p80, 1));
+      appendTextCell(row, Core.formatNumber(summary.p95, 1));
+      appendTextCell(row, Core.formatNumber(summary.effort, 1));
+      appendTextCell(row, Core.formatNumber(summary.riskExposure, 1));
+      appendTextCell(row, scenarioAssumptions(summary));
+      body.appendChild(row);
+    });
+  }
+
+  function scenarioAssumptions(summary) {
+    var parts = [];
+    if (summary.effortAdjustment !== 0) {
+      parts.push("effort " + signedPercent(summary.effortAdjustment));
+    }
+    if (summary.riskAdjustment !== 0) {
+      parts.push("risk " + signedPercent(summary.riskAdjustment));
+    }
+    if (summary.projectDelay > 0) {
+      parts.push("delay " + Core.formatNumber(summary.projectDelay, 1));
+    }
+    if (summary.notes) {
+      parts.push(summary.notes);
+    }
+    return parts.length ? parts.join("; ") : "base assumptions";
+  }
+
+  function signedPercent(value) {
+    return (value > 0 ? "+" : "") + Core.formatNumber(value, 1) + "%";
+  }
+
+  function appendTextCell(row, value) {
+    var cell = state.document.createElement("td");
+    cell.textContent = value;
+    row.appendChild(cell);
+  }
+
   function exportCsv() {
     if (!state.stories.length) {
       return;
@@ -612,6 +889,8 @@
     var payload = {
       stories: state.stories,
       risks: state.risks,
+      scenarios: state.scenarios,
+      scenarioResults: state.scenarioResults,
       results: state.results
     };
     Core.downloadFile(

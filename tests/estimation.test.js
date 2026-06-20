@@ -129,11 +129,55 @@ function testRiskImpactSimulation() {
   assert.equal(Core.validateRisks(risks, stories).length, 0);
 }
 
+function testScenarioComparison() {
+  const stories = [
+    Core.makeStory({ id: "a", name: "A", o: 5, m: 5, p: 5 }, 0),
+    Core.makeStory({ id: "b", name: "B", o: 5, m: 5, p: 5 }, 1)
+  ];
+  const scenarios = [
+    Core.makeScenario({
+      id: "reduced-capacity",
+      name: "Reduced capacity",
+      enabled: true,
+      capacity: 1,
+      effortAdjustment: 0,
+      riskAdjustment: 0,
+      projectDelay: 0
+    }, 0, 2),
+    Core.makeScenario({
+      id: "added-scope",
+      name: "Added scope",
+      enabled: true,
+      capacity: 2,
+      effortAdjustment: 100,
+      riskAdjustment: 0,
+      projectDelay: 2
+    }, 1, 2)
+  ];
+
+  const comparison = MonteCarlo.compareScenarios(stories, {
+    iterations: 100,
+    distribution: "betaPert",
+    capacity: 2,
+    lambda: 4,
+    includeRiskImpacts: false,
+    risks: []
+  }, scenarios);
+
+  assert.equal(comparison.length, 2);
+  approx(comparison[0].summary.p50, 10);
+  approx(comparison[0].summary.effort, 10);
+  approx(comparison[1].summary.p50, 12);
+  approx(comparison[1].summary.effort, 20);
+  assert.equal(Core.validateScenarios(scenarios).length, 0);
+}
+
 testCsvParsing();
 testValidation();
 testCriticalPath();
 testCapacitySchedule();
 testMonteCarloDeterministicCase();
 testRiskImpactSimulation();
+testScenarioComparison();
 
 console.log("All estimation tests passed.");
