@@ -5,8 +5,9 @@ require("../js/core");
 require("../js/csv");
 require("../js/metrics");
 require("../js/monteCarlo");
+require("../js/report");
 
-const { Core, Csv, Metrics, MonteCarlo } = globalThis.Estimator;
+const { Core, Csv, Metrics, MonteCarlo, Report } = globalThis.Estimator;
 
 function approx(actual, expected, tolerance = 0.000001) {
   assert.ok(
@@ -189,6 +190,50 @@ function testDeadlineConfidenceCalculation() {
   assert.equal(unset.status, "not set");
 }
 
+function testExecutiveReportGeneration() {
+  const stories = [
+    Core.makeStory({ id: "a", name: "A", o: 5, m: 5, p: 5 }, 0),
+    Core.makeStory({ id: "b", name: "B", o: 1, m: 1, p: 1, dependencies: ["a"] }, 1)
+  ];
+  const risks = [
+    Core.makeRisk({
+      id: "risk-01",
+      description: "<script>alert('x')</script>",
+      target: "project",
+      probability: 50,
+      impact: 2,
+      owner: "PM",
+      status: "open"
+    }, 0)
+  ];
+  const results = MonteCarlo.simulate(stories, {
+    iterations: 100,
+    distribution: "betaPert",
+    capacity: 1,
+    lambda: 4,
+    targetDuration: 8,
+    includeRiskImpacts: true,
+    risks
+  });
+
+  const html = Report.createExecutiveReport({
+    generatedAt: "2026-06-20T00:00:00.000Z",
+    stories,
+    risks,
+    scenarios: [],
+    scenarioResults: [],
+    results,
+    charts: [{ title: "Chart", svg: "<svg viewBox=\"0 0 1 1\"></svg>" }]
+  });
+
+  assert.ok(html.includes("Executive Estimation Report"));
+  assert.ok(html.includes("Recommended Commitment"));
+  assert.ok(html.includes("Confidence Table"));
+  assert.ok(html.includes("Top Risks"));
+  assert.ok(html.includes("&lt;script&gt;alert"));
+  assert.ok(!html.includes("<script>alert"));
+}
+
 testCsvParsing();
 testValidation();
 testCriticalPath();
@@ -197,5 +242,6 @@ testMonteCarloDeterministicCase();
 testRiskImpactSimulation();
 testScenarioComparison();
 testDeadlineConfidenceCalculation();
+testExecutiveReportGeneration();
 
 console.log("All estimation tests passed.");

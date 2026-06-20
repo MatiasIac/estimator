@@ -52,6 +52,7 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
 - KPI cards for P50, P80, P95, expected effort, critical path size, and risk exposure.
 - CSV export for updated estimate data.
 - JSON export for simulation results and risk data.
+- HTML executive report export with summary KPIs, confidence table, recommendation, critical path, top risks, assumptions, scenarios, and charts.
 - Unit tests for parsing, scheduling, risk impact, and simulation logic.
 
 ## Basic Workflow
@@ -79,7 +80,7 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
    - risk exposure
    - deadline confidence
    - scenario comparison
-10. Export the updated CSV or JSON results when needed.
+10. Export the updated CSV, JSON results, or executive HTML report when needed.
 
 ## CSV Format
 
@@ -157,6 +158,23 @@ After a simulation run, enabled scenarios appear in the scenario comparison tabl
 
 If a target duration is set, each scenario also reports its own target confidence. This lets you compare whether a staffing, scope, or risk assumption makes the target more realistic.
 
+### Executive Report Export
+
+The executive report export creates a standalone HTML report from the current simulation run. It is designed for sponsors, steering committees, product owners, and delivery leads who need the forecast summary without interacting with the full estimation model.
+
+The report includes:
+
+- summary KPIs
+- recommended commitment duration
+- confidence table
+- critical path
+- top active risks
+- scenario comparison
+- planning assumptions
+- chart snapshots from the dashboard
+
+The exported file can be opened in a browser, shared as an HTML artifact, or printed to PDF using the browser print dialog.
+
 ## Running Tests
 
 The project includes a small test script with no external dependencies.
@@ -185,6 +203,7 @@ npm test
 |   |-- csv.js
 |   |-- metrics.js
 |   |-- monteCarlo.js
+|   |-- report.js
 |   `-- ui.js
 |-- data/
 |   `-- sample-estimates.csv

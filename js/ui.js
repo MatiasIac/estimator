@@ -12,6 +12,7 @@
   var Metrics = Estimator.Metrics;
   var MonteCarlo = Estimator.MonteCarlo;
   var Charts = Estimator.Charts;
+  var Report = Estimator.Report;
 
   var state = {
     stories: [],
@@ -50,6 +51,7 @@
       addScenarioButton: documentRef.getElementById("addScenarioButton"),
       exportCsvButton: documentRef.getElementById("exportCsvButton"),
       exportResultsButton: documentRef.getElementById("exportResultsButton"),
+      exportReportButton: documentRef.getElementById("exportReportButton"),
       runMeta: documentRef.getElementById("runMeta"),
       p50Value: documentRef.getElementById("p50Value"),
       p80Value: documentRef.getElementById("p80Value"),
@@ -103,6 +105,7 @@
     refs.addScenarioButton.addEventListener("click", addScenario);
     refs.exportCsvButton.addEventListener("click", exportCsv);
     refs.exportResultsButton.addEventListener("click", exportResults);
+    refs.exportReportButton.addEventListener("click", exportReport);
 
     refs.tableBody.addEventListener("change", handleTableChange);
     refs.tableBody.addEventListener("click", handleTableClick);
@@ -753,6 +756,7 @@
     var results = state.results;
     var refs = state.refs;
     refs.exportResultsButton.disabled = !results;
+    refs.exportReportButton.disabled = !results;
     renderRiskKpi(results);
     renderDeadlineKpi(results);
 
@@ -926,6 +930,41 @@
       JSON.stringify(payload, null, 2),
       "application/json;charset=utf-8"
     );
+  }
+
+  function exportReport() {
+    if (!state.results) {
+      return;
+    }
+
+    var html = Report.createExecutiveReport({
+      generatedAt: new Date().toISOString(),
+      stories: state.stories,
+      risks: state.risks,
+      scenarios: state.scenarios,
+      results: state.results,
+      scenarioResults: state.scenarioResults,
+      charts: collectChartSnapshots()
+    });
+
+    Core.downloadFile("executive-estimation-report.html", html, "text/html;charset=utf-8");
+  }
+
+  function collectChartSnapshots() {
+    return [
+      { title: "Project Duration Distribution", container: state.refs.histogramChart },
+      { title: "Confidence Curve", container: state.refs.confidenceChart },
+      { title: "Violin Distribution", container: state.refs.violinChart },
+      { title: "Effort vs Duration", container: state.refs.scatterChart },
+      { title: "Sensitivity", container: state.refs.sensitivityChart },
+      { title: "Dependency and Critical Path", container: state.refs.dependencyChart }
+    ].map(function mapChart(chart) {
+      var svg = chart.container.querySelector("svg");
+      return {
+        title: chart.title,
+        svg: svg ? svg.outerHTML : ""
+      };
+    });
   }
 
   Estimator.UI = {
