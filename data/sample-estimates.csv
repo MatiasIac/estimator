@@ -1,0 +1,9 @@
+ID,USER STORY,O,M,P,ESTIMATION,DEPENDENCY
+us-01,Discovery workshop,1,2,4,2.17,
+us-02,Authentication foundation,2,4,7,4.17,"us-01"
+us-03,Customer dashboard,3,5,9,5.33,"us-02"
+us-04,Estimator CSV import,2,4,8,4.33,"us-02"
+us-05,Monte Carlo calculation,3,6,11,6.33,"us-04"
+us-06,Executive reporting,2,3,6,3.33,"us-03,us-05"
+us-07,Export package,1,2,5,2.33,"us-05"
+us-08,UAT and rollout,2,4,7,4.17,"us-06,us-07"

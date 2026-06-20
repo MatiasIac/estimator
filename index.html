@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Formal Estimation Control Panel</title>
+    <link rel="stylesheet" href="css/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Monte Carlo formal estimation</p>
+          <h1>Executive estimation control panel</h1>
+        </div>
+        <div class="header-actions">
+          <button class="button secondary" id="loadSampleButton" type="button">Load sample</button>
+          <label class="button primary file-button" for="csvFileInput">
+            Upload CSV
+            <input id="csvFileInput" type="file" accept=".csv,text/csv">
+          </label>
+        </div>
+      </header>
+
+      <section class="command-strip" aria-label="Simulation controls">
+        <div class="upload-zone" id="dropZone">
+          <div>
+            <strong>Start with a PERT CSV</strong>
+            <span>Drop a file here or use the upload button. Dependencies can be comma-separated inside quotes.</span>
+          </div>
+        </div>
+
+        <form class="control-grid" id="simulationForm">
+          <label>
+            <span>Simulations</span>
+            <input id="iterationsInput" type="number" min="100" max="100000" step="100" value="10000">
+          </label>
+          <label>
+            <span>Distribution</span>
+            <select id="distributionSelect">
+              <option value="betaPert">Beta-PERT</option>
+              <option value="triangular">Triangular</option>
+            </select>
+          </label>
+          <label>
+            <span>Parallel work streams</span>
+            <input id="capacityInput" type="number" min="1" max="50" step="1" value="3">
+          </label>
+          <label>
+            <span>PERT lambda</span>
+            <input id="lambdaInput" type="number" min="1" max="10" step="0.5" value="4">
+          </label>
+          <button class="button primary run-button" id="runButton" type="submit">Run simulation</button>
+        </form>
+      </section>
+
+      <section class="kpi-grid" aria-label="Simulation summary">
+        <article class="kpi-card">
+          <span>P50 duration</span>
+          <strong id="p50Value">-</strong>
+          <small>median project duration</small>
+        </article>
+        <article class="kpi-card accent-rose">
+          <span>P80 duration</span>
+          <strong id="p80Value">-</strong>
+          <small>planning confidence</small>
+        </article>
+        <article class="kpi-card accent-amber">
+          <span>P95 duration</span>
+          <strong id="p95Value">-</strong>
+          <small>risk-aware boundary</small>
+        </article>
+        <article class="kpi-card accent-green">
+          <span>Expected effort</span>
+          <strong id="effortValue">-</strong>
+          <small>total story effort</small>
+        </article>
+        <article class="kpi-card accent-indigo">
+          <span>Critical path</span>
+          <strong id="criticalPathValue">-</strong>
+          <small id="criticalPathLabel">upload data to calculate</small>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <section class="panel wide">
+          <div class="panel-heading">
+            <div>
+              <h2>Project duration distribution</h2>
+              <p>Monte Carlo outcomes with confidence markers.</p>
+            </div>
+            <output id="runMeta">No simulation run yet.</output>
+          </div>
+          <div class="chart-frame" id="histogramChart" aria-label="Project duration histogram"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Confidence curve</h2>
+              <p>Probability of completion by duration.</p>
+            </div>
+          </div>
+          <div class="chart-frame compact" id="confidenceChart" aria-label="Confidence curve"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Violin distribution</h2>
+              <p>Density shape for project duration.</p>
+            </div>
+          </div>
+          <div class="chart-frame compact" id="violinChart" aria-label="Violin distribution"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Effort vs duration</h2>
+              <p>Sampled project effort compared with scheduled duration.</p>
+            </div>
+          </div>
+          <div class="chart-frame compact" id="scatterChart" aria-label="Effort versus duration scatter plot"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Sensitivity</h2>
+              <p>Story influence on project duration.</p>
+            </div>
+          </div>
+          <div class="chart-frame compact" id="sensitivityChart" aria-label="Sensitivity bar chart"></div>
+        </section>
+
+        <section class="panel wide">
+          <div class="panel-heading">
+            <div>
+              <h2>Dependency and critical path</h2>
+              <p>Network schedule from story dependencies and PERT estimates.</p>
+            </div>
+          </div>
+          <div class="chart-frame graph-frame" id="dependencyChart" aria-label="Dependency graph"></div>
+        </section>
+      </section>
+
+      <section class="data-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Editable story data</h2>
+            <p>Update estimates, dependencies, or story names and run the model again.</p>
+          </div>
+          <div class="inline-actions">
+            <button class="button secondary" id="addStoryButton" type="button">Add story</button>
+            <button class="button secondary" id="exportCsvButton" type="button" disabled>Export CSV</button>
+            <button class="button secondary" id="exportResultsButton" type="button" disabled>Export results</button>
+          </div>
+        </div>
+        <div class="validation-list" id="validationList" role="status" aria-live="polite"></div>
+        <div class="table-wrap">
+          <table class="story-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User story</th>
+                <th>O</th>
+                <th>M</th>
+                <th>P</th>
+                <th>PERT</th>
+                <th>Dependency</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="storyTableBody">
+              <tr class="empty-row">
+                <td colspan="8">Upload a CSV file or load the sample data to begin.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script defer src="js/core.js"></script>
+    <script defer src="js/csv.js"></script>
+    <script defer src="js/metrics.js"></script>
+    <script defer src="js/monteCarlo.js"></script>
+    <script defer src="js/charts.js"></script>
+    <script defer src="js/ui.js"></script>
+    <script defer src="js/app.js"></script>
+  </body>
+</html>

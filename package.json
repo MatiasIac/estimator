@@ -1,0 +1,9 @@
+{
+  "name": "formal-estimation-tool",
+  "version": "1.0.0",
+  "description": "Single page Monte Carlo formal estimation dashboard.",
+  "private": true,
+  "scripts": {
+    "test": "node tests/estimation.test.js"
+  }
+}
