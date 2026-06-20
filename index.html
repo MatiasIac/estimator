@@ -50,6 +50,10 @@
             <span>PERT lambda</span>
             <input id="lambdaInput" type="number" min="1" max="10" step="0.5" value="4">
           </label>
+          <label class="checkbox-field">
+            <input id="riskImpactInput" type="checkbox" checked>
+            <span>Include risk impacts</span>
+          </label>
           <button class="button primary run-button" id="runButton" type="submit">Run simulation</button>
         </form>
       </section>
@@ -79,6 +83,11 @@
           <span>Critical path</span>
           <strong id="criticalPathValue">-</strong>
           <small id="criticalPathLabel">upload data to calculate</small>
+        </article>
+        <article class="kpi-card accent-rose">
+          <span>Risk exposure</span>
+          <strong id="riskExposureValue">-</strong>
+          <small id="riskExposureLabel">expected active risk impact</small>
         </article>
       </section>
 
@@ -175,6 +184,42 @@
             <tbody id="storyTableBody">
               <tr class="empty-row">
                 <td colspan="8">Upload a CSV file or load the sample data to begin.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="data-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Risk register</h2>
+            <p>Track project and story-level risks, then optionally include their impacts in the simulation.</p>
+          </div>
+          <div class="inline-actions">
+            <button class="button secondary" id="addRiskButton" type="button">Add risk</button>
+          </div>
+        </div>
+        <div class="validation-list" id="riskValidationList" role="status" aria-live="polite"></div>
+        <div class="table-wrap">
+          <table class="story-table risk-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Risk description</th>
+                <th>Linked to</th>
+                <th>Probability %</th>
+                <th>Impact</th>
+                <th>Owner</th>
+                <th>Mitigation</th>
+                <th>Contingency</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="riskTableBody">
+              <tr class="empty-row">
+                <td colspan="10">Add project or story-level risks to model uncertainty beyond normal estimates.</td>
               </tr>
             </tbody>
           </table>

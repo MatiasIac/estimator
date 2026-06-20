@@ -82,6 +82,44 @@
     }
   ];
 
+  var DEFAULT_RISKS = [
+    {
+      id: "risk-01",
+      description: "Third-party API documentation is incomplete",
+      target: "us-04",
+      probability: 35,
+      impact: 4,
+      owner: "Delivery lead",
+      mitigation: "Validate API endpoints during discovery.",
+      contingency: "Add a small integration spike before build.",
+      status: "open"
+    },
+    {
+      id: "risk-02",
+      description: "Key reviewer availability delays acceptance",
+      target: "project",
+      probability: 25,
+      impact: 3,
+      owner: "Project manager",
+      mitigation: "Book review sessions before implementation starts.",
+      contingency: "Escalate to backup reviewer.",
+      status: "monitoring"
+    },
+    {
+      id: "risk-03",
+      description: "Reporting requirements change after demo",
+      target: "us-06",
+      probability: 20,
+      impact: 5,
+      owner: "Product owner",
+      mitigation: "Confirm report fields with stakeholders.",
+      contingency: "Move non-essential report fields to follow-up scope.",
+      status: "open"
+    }
+  ];
+
+  var RISK_STATUSES = ["open", "monitoring", "mitigated", "closed"];
+
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -172,6 +210,72 @@
     };
   }
 
+  function normalizeRiskStatus(value) {
+    var status = String(value || "").trim().toLowerCase();
+    return RISK_STATUSES.indexOf(status) >= 0 ? status : "open";
+  }
+
+  function makeRisk(raw, index) {
+    var source = raw || {};
+    var target = source.target === "project" ? "project" : normalizeId(source.target || "project");
+    return {
+      id: normalizeId(source.id || "risk-" + String(index + 1).padStart(2, "0")),
+      description: String(source.description || "New project risk").trim(),
+      target: target || "project",
+      probability: clamp(toNumber(source.probability, 0), 0, 100),
+      impact: Math.max(0, toNumber(source.impact, 0)),
+      owner: String(source.owner || "").trim(),
+      mitigation: String(source.mitigation || "").trim(),
+      contingency: String(source.contingency || "").trim(),
+      status: normalizeRiskStatus(source.status)
+    };
+  }
+
+  function isRiskActive(risk) {
+    return normalizeRiskStatus(risk.status) !== "closed";
+  }
+
+  function riskExposure(risks) {
+    return (risks || []).filter(isRiskActive).reduce(function addExposure(total, risk) {
+      return total + (clamp(toNumber(risk.probability, 0), 0, 100) / 100) * Math.max(0, toNumber(risk.impact, 0));
+    }, 0);
+  }
+
+  function validateRisks(risks, stories) {
+    var errors = [];
+    var ids = new Set();
+    var storyIds = new Set((stories || []).map(function getId(story) { return story.id; }));
+
+    (risks || []).forEach(function validateRisk(risk, index) {
+      var label = risk.id || "risk row " + (index + 1);
+      if (!risk.id) {
+        errors.push("Risk row " + (index + 1) + " is missing an ID.");
+      }
+      if (ids.has(risk.id)) {
+        errors.push("Duplicate risk ID: " + risk.id + ".");
+      }
+      ids.add(risk.id);
+
+      if (!risk.description) {
+        errors.push(label + " is missing a description.");
+      }
+      if (risk.target !== "project" && !storyIds.has(risk.target)) {
+        errors.push(label + " is linked to unknown story " + risk.target + ".");
+      }
+      if (!Number.isFinite(Number(risk.probability)) || risk.probability < 0 || risk.probability > 100) {
+        errors.push(label + " probability must be between 0 and 100.");
+      }
+      if (!Number.isFinite(Number(risk.impact)) || risk.impact < 0) {
+        errors.push(label + " impact must be zero or greater.");
+      }
+      if (RISK_STATUSES.indexOf(normalizeRiskStatus(risk.status)) < 0) {
+        errors.push(label + " has an invalid status.");
+      }
+    });
+
+    return errors;
+  }
+
   function downloadFile(filename, content, mimeType) {
     var blob = new Blob([content], { type: mimeType || "text/plain;charset=utf-8" });
     var url = URL.createObjectURL(blob);
@@ -197,6 +301,8 @@
 
   Estimator.Core = {
     DEFAULT_STORIES: DEFAULT_STORIES,
+    DEFAULT_RISKS: DEFAULT_RISKS,
+    RISK_STATUSES: RISK_STATUSES,
     clone: clone,
     toNumber: toNumber,
     round: round,
@@ -208,6 +314,11 @@
     sum: sum,
     normalizeId: normalizeId,
     makeStory: makeStory,
+    makeRisk: makeRisk,
+    normalizeRiskStatus: normalizeRiskStatus,
+    isRiskActive: isRiskActive,
+    riskExposure: riskExposure,
+    validateRisks: validateRisks,
     downloadFile: downloadFile,
     uniqueId: uniqueId
   };

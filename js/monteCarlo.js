@@ -113,14 +113,33 @@
     var distribution = settings.distribution === "triangular" ? "triangular" : "betaPert";
     var capacity = Math.max(1, Math.round(Core.toNumber(settings.capacity, 1)));
     var lambda = Core.clamp(Core.toNumber(settings.lambda, 4), 1, 10);
+    var includeRiskImpacts = settings.includeRiskImpacts === true;
+    var risks = (settings.risks || []).map(function normalizeRisk(risk, index) {
+      return Core.makeRisk(risk, index);
+    });
+    var activeRisks = risks.filter(Core.isRiskActive);
     var durations = [];
     var efforts = [];
+    var riskImpacts = [];
     var scatter = [];
     var storyAccumulators = new Map();
     var storyStats = new Map();
+    var riskStats = new Map();
     var sumY = 0;
     var sumY2 = 0;
     var scatterStep = Math.max(1, Math.floor(iterations / 1200));
+
+    activeRisks.forEach(function initializeRiskStats(risk) {
+      riskStats.set(risk.id, {
+        id: risk.id,
+        description: risk.description,
+        target: risk.target,
+        probability: risk.probability,
+        impact: risk.impact,
+        triggerCount: 0,
+        totalImpact: 0
+      });
+    });
 
     stories.forEach(function initializeAccumulator(story) {
       storyAccumulators.set(story.id, {
@@ -140,10 +159,34 @@
 
     for (var index = 0; index < iterations; index += 1) {
       var durationById = {};
+      var storyRiskImpactById = {};
+      var projectRiskImpact = 0;
+      var totalRiskImpact = 0;
       var effort = 0;
 
+      if (includeRiskImpacts) {
+        activeRisks.forEach(function sampleRisk(risk) {
+          var probability = Core.clamp(Core.toNumber(risk.probability, 0), 0, 100) / 100;
+          var impact = Math.max(0, Core.toNumber(risk.impact, 0));
+          if (Math.random() > probability) {
+            return;
+          }
+
+          var stats = riskStats.get(risk.id);
+          stats.triggerCount += 1;
+          stats.totalImpact += impact;
+          totalRiskImpact += impact;
+
+          if (risk.target === "project") {
+            projectRiskImpact += impact;
+          } else {
+            storyRiskImpactById[risk.target] = (storyRiskImpactById[risk.target] || 0) + impact;
+          }
+        });
+      }
+
       stories.forEach(function sample(story) {
-        var sampledDuration = sampleStory(story, distribution, lambda);
+        var sampledDuration = sampleStory(story, distribution, lambda) + (storyRiskImpactById[story.id] || 0);
         durationById[story.id] = sampledDuration;
         effort += sampledDuration;
 
@@ -153,10 +196,11 @@
       });
 
       var scheduled = Metrics.scheduleWithCapacity(stories, durationById, capacity);
-      var projectDuration = scheduled.duration;
+      var projectDuration = scheduled.duration + projectRiskImpact;
 
       durations.push(projectDuration);
       efforts.push(effort);
+      riskImpacts.push(totalRiskImpact);
       sumY += projectDuration;
       sumY2 += projectDuration * projectDuration;
 
@@ -178,6 +222,7 @@
 
     var durationSummary = summarize(durations);
     var effortSummary = summarize(efforts);
+    var riskImpactSummary = summarize(riskImpacts);
     var meanY = sumY / iterations;
     var varianceY = sumY2 - iterations * meanY * meanY;
 
@@ -207,19 +252,42 @@
       };
     });
 
+    var perRisk = Array.from(riskStats.values()).map(function mapRiskStats(item) {
+      return {
+        id: item.id,
+        description: item.description,
+        target: item.target,
+        probability: item.probability,
+        impact: item.impact,
+        triggerRate: (item.triggerCount / iterations) * 100,
+        expectedImpact: item.totalImpact / iterations
+      };
+    }).sort(function sortRiskExposure(a, b) {
+      return b.expectedImpact - a.expectedImpact;
+    });
+
     return {
       options: {
         iterations: iterations,
         distribution: distribution,
         capacity: capacity,
-        lambda: lambda
+        lambda: lambda,
+        includeRiskImpacts: includeRiskImpacts
       },
       deterministic: Metrics.summarizeDeterministic(stories, capacity),
       duration: durationSummary,
       effort: effortSummary,
+      risk: {
+        included: includeRiskImpacts,
+        activeCount: activeRisks.length,
+        expectedExposure: Core.riskExposure(activeRisks),
+        impact: riskImpactSummary,
+        stats: perRisk
+      },
       raw: {
         durations: durations,
         efforts: efforts,
+        riskImpacts: riskImpacts,
         scatter: scatter
       },
       sensitivity: sensitivity,

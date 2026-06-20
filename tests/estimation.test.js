@@ -81,10 +81,59 @@ function testMonteCarloDeterministicCase() {
   assert.equal(results.sensitivity.length, 3);
 }
 
+function testRiskImpactSimulation() {
+  const stories = [
+    Core.makeStory({ id: "a", name: "A", o: 5, m: 5, p: 5 }, 0),
+    Core.makeStory({ id: "b", name: "B", o: 1, m: 1, p: 1, dependencies: ["a"] }, 1)
+  ];
+  const risks = [
+    Core.makeRisk({
+      id: "risk-01",
+      description: "Story delay",
+      target: "a",
+      probability: 100,
+      impact: 2,
+      status: "open"
+    }, 0),
+    Core.makeRisk({
+      id: "risk-02",
+      description: "Project delay",
+      target: "project",
+      probability: 100,
+      impact: 3,
+      status: "open"
+    }, 1)
+  ];
+
+  const withRisk = MonteCarlo.simulate(stories, {
+    iterations: 100,
+    distribution: "betaPert",
+    capacity: 1,
+    lambda: 4,
+    includeRiskImpacts: true,
+    risks
+  });
+  const withoutRisk = MonteCarlo.simulate(stories, {
+    iterations: 100,
+    distribution: "betaPert",
+    capacity: 1,
+    lambda: 4,
+    includeRiskImpacts: false,
+    risks
+  });
+
+  approx(withRisk.duration.p50, 11);
+  approx(withRisk.effort.mean, 8);
+  approx(withRisk.risk.impact.mean, 5);
+  approx(withoutRisk.duration.p50, 6);
+  assert.equal(Core.validateRisks(risks, stories).length, 0);
+}
+
 testCsvParsing();
 testValidation();
 testCriticalPath();
 testCapacitySchedule();
 testMonteCarloDeterministicCase();
+testRiskImpactSimulation();
 
 console.log("All estimation tests passed.");

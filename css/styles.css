@@ -190,7 +190,7 @@ h2 {
 
 .control-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(6, minmax(116px, 1fr));
   gap: 12px;
   align-items: end;
   padding: 14px;
@@ -209,9 +209,10 @@ h2 {
   letter-spacing: 0;
 }
 
-.control-grid input,
+.control-grid input:not([type="checkbox"]),
 .control-grid select,
-.story-table input {
+.story-table input,
+.story-table select {
   width: 100%;
   min-height: 40px;
   border: 1px solid var(--line);
@@ -221,11 +222,33 @@ h2 {
   background: var(--surface);
 }
 
-.control-grid input:focus,
+.control-grid input:not([type="checkbox"]):focus,
 .control-grid select:focus,
-.story-table input:focus {
+.story-table input:focus,
+.story-table select:focus {
   border-color: var(--teal);
   outline: 3px solid rgba(11, 127, 122, 0.18);
+}
+
+.checkbox-field {
+  min-height: 42px;
+  align-content: center;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+.checkbox-field span {
+  text-transform: none;
 }
 
 .run-button {
@@ -234,7 +257,7 @@ h2 {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(170px, 1fr));
+  grid-template-columns: repeat(6, minmax(160px, 1fr));
   gap: 12px;
   margin: 0 0 16px;
 }
@@ -379,6 +402,10 @@ h2 {
   background: var(--surface);
 }
 
+.data-panel + .data-panel {
+  margin-top: 16px;
+}
+
 .validation-list {
   display: none;
   padding: 12px 18px;
@@ -406,6 +433,10 @@ h2 {
   width: 100%;
   min-width: 920px;
   border-collapse: collapse;
+}
+
+.risk-table {
+  min-width: 1540px;
 }
 
 .story-table th,
@@ -437,6 +468,30 @@ h2 {
 
 .story-table td:nth-child(7) {
   width: 210px;
+}
+
+.risk-table td:nth-child(1) {
+  width: 116px;
+}
+
+.risk-table td:nth-child(2),
+.risk-table td:nth-child(7),
+.risk-table td:nth-child(8) {
+  width: 250px;
+}
+
+.risk-table td:nth-child(3),
+.risk-table td:nth-child(9) {
+  width: 160px;
+}
+
+.risk-table td:nth-child(4),
+.risk-table td:nth-child(5) {
+  width: 112px;
+}
+
+.risk-table td:nth-child(6) {
+  width: 150px;
 }
 
 .story-table .pert-cell {
