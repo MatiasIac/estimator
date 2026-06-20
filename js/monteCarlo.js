@@ -105,6 +105,37 @@
     };
   }
 
+  function calculateDeadlineConfidence(sortedValues, targetDuration) {
+    var target = Core.toNumber(targetDuration, NaN);
+    if (!Number.isFinite(target) || target < 0 || !sortedValues.length) {
+      return {
+        targetDuration: null,
+        confidence: null,
+        onTimeCount: 0,
+        lateCount: 0,
+        totalCount: sortedValues.length,
+        marginToP80: null,
+        status: "not set"
+      };
+    }
+
+    var onTimeCount = 0;
+    while (onTimeCount < sortedValues.length && sortedValues[onTimeCount] <= target) {
+      onTimeCount += 1;
+    }
+
+    var confidence = (onTimeCount / sortedValues.length) * 100;
+    return {
+      targetDuration: target,
+      confidence: confidence,
+      onTimeCount: onTimeCount,
+      lateCount: sortedValues.length - onTimeCount,
+      totalCount: sortedValues.length,
+      marginToP80: target - Core.percentile(sortedValues, 0.8),
+      status: confidence >= 80 ? "strong" : confidence >= 50 ? "moderate" : "low"
+    };
+  }
+
   function simulate(stories, options) {
     var settings = options || {};
     var iterations = Math.round(
@@ -114,6 +145,7 @@
     var capacity = Math.max(1, Math.round(Core.toNumber(settings.capacity, 1)));
     var lambda = Core.clamp(Core.toNumber(settings.lambda, 4), 1, 10);
     var projectDelay = Math.max(0, Core.toNumber(settings.projectDelay, 0));
+    var targetDuration = Core.toNumber(settings.targetDuration, NaN);
     var includeRiskImpacts = settings.includeRiskImpacts === true;
     var risks = (settings.risks || []).map(function normalizeRisk(risk, index) {
       return Core.makeRisk(risk, index);
@@ -224,6 +256,7 @@
     var durationSummary = summarize(durations);
     var effortSummary = summarize(efforts);
     var riskImpactSummary = summarize(riskImpacts);
+    var deadline = calculateDeadlineConfidence(durationSummary.sorted, targetDuration);
     var meanY = sumY / iterations;
     var varianceY = sumY2 - iterations * meanY * meanY;
 
@@ -274,10 +307,12 @@
         capacity: capacity,
         lambda: lambda,
         projectDelay: projectDelay,
+        targetDuration: deadline.targetDuration,
         includeRiskImpacts: includeRiskImpacts
       },
       deterministic: Metrics.summarizeDeterministic(stories, capacity),
       duration: durationSummary,
+      deadline: deadline,
       effort: effortSummary,
       risk: {
         included: includeRiskImpacts,
@@ -310,7 +345,8 @@
       lambda: baseOptions.lambda,
       includeRiskImpacts: baseOptions.includeRiskImpacts,
       risks: scenarioRisks,
-      projectDelay: settings.projectDelay
+      projectDelay: settings.projectDelay,
+      targetDuration: baseOptions.targetDuration
     };
     var result = simulate(scenarioStories, scenarioOptions);
 
@@ -328,6 +364,8 @@
         p80: result.duration.p80,
         p90: result.duration.p90,
         p95: result.duration.p95,
+        targetConfidence: result.deadline.confidence,
+        targetDuration: result.deadline.targetDuration,
         effort: result.effort.mean,
         riskExposure: result.risk.expectedExposure,
         notes: settings.notes
@@ -354,6 +392,7 @@
     simulate: simulate,
     simulateScenario: simulateScenario,
     compareScenarios: compareScenarios,
+    calculateDeadlineConfidence: calculateDeadlineConfidence,
     summarize: summarize
   };
 

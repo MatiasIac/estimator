@@ -50,6 +50,10 @@
             <span>PERT lambda</span>
             <input id="lambdaInput" type="number" min="1" max="10" step="0.5" value="4">
           </label>
+          <label>
+            <span>Target duration</span>
+            <input id="targetDurationInput" type="number" min="0" step="0.5" placeholder="Optional">
+          </label>
           <label class="checkbox-field">
             <input id="riskImpactInput" type="checkbox" checked>
             <span>Include risk impacts</span>
@@ -88,6 +92,11 @@
           <span>Risk exposure</span>
           <strong id="riskExposureValue">-</strong>
           <small id="riskExposureLabel">expected active risk impact</small>
+        </article>
+        <article class="kpi-card accent-green">
+          <span>Deadline confidence</span>
+          <strong id="deadlineConfidenceValue">-</strong>
+          <small id="deadlineConfidenceLabel">set a target duration</small>
         </article>
       </section>
 
@@ -202,6 +211,7 @@
                   <th>P50</th>
                   <th>P80</th>
                   <th>P95</th>
+                  <th>Target confidence</th>
                   <th>Expected effort</th>
                   <th>Risk exposure</th>
                   <th>Assumptions</th>
@@ -209,7 +219,7 @@
               </thead>
               <tbody id="scenarioComparisonBody">
                 <tr class="empty-row">
-                  <td colspan="8">Run a simulation to compare enabled scenarios.</td>
+                  <td colspan="9">Run a simulation to compare enabled scenarios.</td>
                 </tr>
               </tbody>
             </table>

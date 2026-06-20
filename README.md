@@ -37,7 +37,8 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
 - Risk register with probability, impact, owner, mitigation, contingency, and status.
 - Optional risk-adjusted simulation impact.
 - Scenario planning table with enabled scenarios, work streams, effort adjustment, risk adjustment, project delay, and notes.
-- Scenario comparison table for P50, P80, P95, expected effort, and risk exposure.
+- Target duration input with deadline confidence calculation.
+- Scenario comparison table for P50, P80, P95, target confidence, expected effort, and risk exposure.
 - Monte Carlo simulation with configurable simulation count.
 - Beta-PERT and triangular distribution options.
 - Configurable parallel work streams to model team capacity.
@@ -66,6 +67,7 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
    - distribution type
    - parallel work streams
    - PERT lambda
+   - target duration
    - whether risk impacts should be included
 8. Run the simulation.
 9. Review the dashboard:
@@ -75,6 +77,7 @@ For example, instead of saying, "The project will take 30 days," the dashboard c
    - sensitivity drivers
    - effort versus duration
    - risk exposure
+   - deadline confidence
    - scenario comparison
 10. Export the updated CSV or JSON results when needed.
 
@@ -130,6 +133,14 @@ Each risk can be linked to the whole project or to a specific story. Story-linke
 
 Use the `Include risk impacts` setting to compare the normal forecast with the risk-adjusted forecast.
 
+### Deadline Confidence
+
+Deadline confidence answers a different question from P80 or P90. P80 asks, "What duration gives us 80% confidence?" Deadline confidence asks, "Given this specific target duration, how likely are we to finish on time?"
+
+Enter a target duration in the simulation controls. After the simulation runs, the app counts how many simulated outcomes finished at or before that target. If 7,200 out of 10,000 simulation runs finish within the target duration, the deadline confidence is 72%.
+
+This is useful when a business sponsor already has a desired date or duration. It makes the risk of that target visible and helps project managers explain whether the deadline is low, moderate, or strong confidence.
+
 ### Scenario Planning
 
 Scenario planning lets you compare alternate versions of the plan without permanently changing the story estimates or risk register. Each scenario starts from the current project data and applies a small set of assumptions before running its own Monte Carlo simulation.
@@ -143,6 +154,8 @@ Each scenario can define:
 - `Notes`: a short explanation of the assumption behind the scenario.
 
 After a simulation run, enabled scenarios appear in the scenario comparison table. This makes it easier to support executive conversations such as, "What happens if we add another team?", "What happens if scope grows by 10%?", or "What happens if this external dependency is delayed?"
+
+If a target duration is set, each scenario also reports its own target confidence. This lets you compare whether a staffing, scope, or risk assumption makes the target more realistic.
 
 ## Running Tests
 

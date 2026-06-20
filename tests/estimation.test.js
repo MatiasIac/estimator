@@ -72,12 +72,14 @@ function testMonteCarloDeterministicCase() {
     iterations: 100,
     distribution: "betaPert",
     capacity: 2,
-    lambda: 4
+    lambda: 4,
+    targetDuration: 6
   });
 
   approx(results.duration.p50, 6);
   approx(results.duration.p95, 6);
   approx(results.effort.mean, 11);
+  approx(results.deadline.confidence, 100);
   assert.equal(results.sensitivity.length, 3);
 }
 
@@ -160,6 +162,7 @@ function testScenarioComparison() {
     distribution: "betaPert",
     capacity: 2,
     lambda: 4,
+    targetDuration: 10,
     includeRiskImpacts: false,
     risks: []
   }, scenarios);
@@ -167,9 +170,23 @@ function testScenarioComparison() {
   assert.equal(comparison.length, 2);
   approx(comparison[0].summary.p50, 10);
   approx(comparison[0].summary.effort, 10);
+  approx(comparison[0].summary.targetConfidence, 100);
   approx(comparison[1].summary.p50, 12);
   approx(comparison[1].summary.effort, 20);
+  approx(comparison[1].summary.targetConfidence, 0);
   assert.equal(Core.validateScenarios(scenarios).length, 0);
+}
+
+function testDeadlineConfidenceCalculation() {
+  const confidence = MonteCarlo.calculateDeadlineConfidence([4, 5, 8, 10], 8);
+  approx(confidence.confidence, 75);
+  assert.equal(confidence.onTimeCount, 3);
+  assert.equal(confidence.lateCount, 1);
+  assert.equal(confidence.status, "moderate");
+
+  const unset = MonteCarlo.calculateDeadlineConfidence([4, 5], NaN);
+  assert.equal(unset.confidence, null);
+  assert.equal(unset.status, "not set");
 }
 
 testCsvParsing();
@@ -179,5 +196,6 @@ testCapacitySchedule();
 testMonteCarloDeterministicCase();
 testRiskImpactSimulation();
 testScenarioComparison();
+testDeadlineConfidenceCalculation();
 
 console.log("All estimation tests passed.");

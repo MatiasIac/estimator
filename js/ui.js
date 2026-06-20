@@ -35,6 +35,7 @@
       distributionSelect: documentRef.getElementById("distributionSelect"),
       capacityInput: documentRef.getElementById("capacityInput"),
       lambdaInput: documentRef.getElementById("lambdaInput"),
+      targetDurationInput: documentRef.getElementById("targetDurationInput"),
       riskImpactInput: documentRef.getElementById("riskImpactInput"),
       runButton: documentRef.getElementById("runButton"),
       tableBody: documentRef.getElementById("storyTableBody"),
@@ -58,6 +59,8 @@
       criticalPathLabel: documentRef.getElementById("criticalPathLabel"),
       riskExposureValue: documentRef.getElementById("riskExposureValue"),
       riskExposureLabel: documentRef.getElementById("riskExposureLabel"),
+      deadlineConfidenceValue: documentRef.getElementById("deadlineConfidenceValue"),
+      deadlineConfidenceLabel: documentRef.getElementById("deadlineConfidenceLabel"),
       histogramChart: documentRef.getElementById("histogramChart"),
       confidenceChart: documentRef.getElementById("confidenceChart"),
       violinChart: documentRef.getElementById("violinChart"),
@@ -150,9 +153,15 @@
       distribution: refs.distributionSelect.value,
       capacity: Core.toNumber(refs.capacityInput.value, 3),
       lambda: Core.toNumber(refs.lambdaInput.value, 4),
+      targetDuration: readTargetDuration(),
       includeRiskImpacts: refs.riskImpactInput.checked,
       risks: state.risks
     };
+  }
+
+  function readTargetDuration() {
+    var raw = String(state.refs.targetDurationInput.value || "").trim();
+    return raw === "" ? NaN : Core.toNumber(raw, NaN);
   }
 
   function setStories(stories, shouldRun, risks, scenarios) {
@@ -191,9 +200,7 @@
     );
     state.results = null;
     state.scenarioResults = [];
-    state.scenarioNotice = "Scenario added. Edit the assumptions, then run the simulation to compare it.";
     render();
-    focusScenarioRow(state.scenarios.length - 1);
   }
 
   function addRisk() {
@@ -232,7 +239,9 @@
     );
     state.results = null;
     state.scenarioResults = [];
+    state.scenarioNotice = "Scenario added. Edit the assumptions, then run the simulation to compare it.";
     render();
+    focusScenarioRow(state.scenarios.length - 1);
   }
 
   function handleTableClick(event) {
@@ -745,6 +754,7 @@
     var refs = state.refs;
     refs.exportResultsButton.disabled = !results;
     renderRiskKpi(results);
+    renderDeadlineKpi(results);
 
     if (!results) {
       renderScenarioComparison();
@@ -803,6 +813,19 @@
       : "no active risks";
   }
 
+  function renderDeadlineKpi(results) {
+    if (!results || !results.deadline || results.deadline.targetDuration === null) {
+      state.refs.deadlineConfidenceValue.textContent = "-";
+      state.refs.deadlineConfidenceLabel.textContent = "set a target duration";
+      return;
+    }
+
+    state.refs.deadlineConfidenceValue.textContent = Core.formatNumber(results.deadline.confidence, 1) + "%";
+    state.refs.deadlineConfidenceLabel.textContent =
+      "within " + Core.formatNumber(results.deadline.targetDuration, 1) +
+      " (" + results.deadline.status + " confidence)";
+  }
+
   function renderDeterministicGraphOnly() {
     if (!state.stories.length || Csv.validateStories(state.stories).length) {
       Charts.empty(state.refs.dependencyChart, "Upload valid story data to see the dependency network.");
@@ -824,7 +847,7 @@
       var emptyRow = state.document.createElement("tr");
       emptyRow.className = "empty-row";
       var emptyCell = state.document.createElement("td");
-      emptyCell.colSpan = 8;
+      emptyCell.colSpan = 9;
       emptyCell.textContent = state.scenarios.length
         ? "Run a simulation to compare enabled scenarios."
         : "Add scenarios to compare alternate planning assumptions.";
@@ -841,6 +864,7 @@
       appendTextCell(row, Core.formatNumber(summary.p50, 1));
       appendTextCell(row, Core.formatNumber(summary.p80, 1));
       appendTextCell(row, Core.formatNumber(summary.p95, 1));
+      appendTextCell(row, formatConfidence(summary.targetConfidence));
       appendTextCell(row, Core.formatNumber(summary.effort, 1));
       appendTextCell(row, Core.formatNumber(summary.riskExposure, 1));
       appendTextCell(row, scenarioAssumptions(summary));
@@ -867,6 +891,10 @@
 
   function signedPercent(value) {
     return (value > 0 ? "+" : "") + Core.formatNumber(value, 1) + "%";
+  }
+
+  function formatConfidence(value) {
+    return Number.isFinite(value) ? Core.formatNumber(value, 1) + "%" : "-";
   }
 
   function appendTextCell(row, value) {
